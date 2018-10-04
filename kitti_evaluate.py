@@ -7,7 +7,7 @@ import os
 import numpy as np
 from six.moves import cPickle
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -47,15 +47,20 @@ inputs = Input(shape=tuple(input_shape))
 predictions = test_prednet(inputs)
 test_model = Model(inputs=inputs, outputs=predictions)
 
-test_generator = SequenceGenerator(test_file, test_sources, nt, sequence_start_mode='unique', data_format=data_format)
+test_generator = SequenceGenerator(test_file, test_sources, nt,
+                                   sequence_start_mode='unique', data_format=data_format)
 X_test = test_generator.create_all()
 X_hat = test_model.predict(X_test, batch_size)
 if data_format == 'channels_first':
     X_test = np.transpose(X_test, (0, 1, 3, 4, 2))
     X_hat = np.transpose(X_hat, (0, 1, 3, 4, 2))
 
-# Compare MSE of PredNet predictions vs. using last frame.  Write results to prediction_scores.txt
-mse_model = np.mean( (X_test[:, 1:] - X_hat[:, 1:])**2 )  # look at all timesteps except the first
+
+# Compare MSE of PredNet predictions vs. using last frame.
+# Write results to prediction_scores.txt
+
+# look at all timesteps except the first
+mse_model = np.mean( (X_test[:, 1:] - X_hat[:, 1:])**2 )
 mse_prev = np.mean( (X_test[:, :-1] - X_test[:, 1:])**2 )
 if not os.path.exists(RESULTS_SAVE_DIR): os.mkdir(RESULTS_SAVE_DIR)
 f = open(RESULTS_SAVE_DIR + 'prediction_scores.txt', 'w')

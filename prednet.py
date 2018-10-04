@@ -1,3 +1,4 @@
+
 import numpy as np
 
 from keras import backend as K
@@ -5,28 +6,31 @@ from keras import activations
 from keras.layers import Recurrent
 from keras.layers import Conv2D, UpSampling2D, MaxPooling2D
 from keras.engine import InputSpec
-from keras_utils import legacy_prednet_support
+from prednet.keras_utils import legacy_prednet_support
+
 
 class PredNet(Recurrent):
     '''PredNet architecture - Lotter 2016.
         Stacked convolutional LSTM inspired by predictive coding principles.
 
     # Arguments
-        stack_sizes: number of channels in targets (A) and predictions (Ahat) in each layer of the architecture.
+        stack_sizes: number of channels in targets (A) and predictions (Ahat) in each
+        layer of the architecture.
             Length is the number of layers in the architecture.
             First element is the number of channels in the input.
-            Ex. (3, 16, 32) would correspond to a 3 layer architecture that takes in RGB images and has 16 and 32
-                channels in the second and third layers, respectively.
+            Ex. (3, 16, 32) would correspond to a 3 layer architecture that takes in RGB
+            images and has 16 and 32 channels in the second and third layers, respectively.
         R_stack_sizes: number of channels in the representation (R) modules.
-            Length must equal length of stack_sizes, but the number of channels per layer can be different.
+            Length must equal length of stack_sizes, but the number of channels per layer
+            can be different.
         A_filt_sizes: filter sizes for the target (A) modules.
             Has length of 1 - len(stack_sizes).
-            Ex. (3, 3) would mean that targets for layers 2 and 3 are computed by a 3x3 convolution of the errors (E)
-                from the layer below (followed by max-pooling)
+            Ex. (3, 3) would mean that targets for layers 2 and 3 are computed by a 3x3
+            convolution of the errors (E) from the layer below (followed by max-pooling)
         Ahat_filt_sizes: filter sizes for the prediction (Ahat) modules.
             Has length equal to length of stack_sizes.
-            Ex. (3, 3, 3) would mean that the predictions for each layer are computed by a 3x3 convolution of the
-                representation (R) modules at each layer.
+            Ex. (3, 3, 3) would mean that the predictions for each layer are computed by
+            a 3x3 convolution of the representation (R) modules at each layer.
         R_filt_sizes: filter sizes for the representation (R) modules.
             Has length equal to length of stack_sizes.
             Corresponds to the filter sizes for all convolutions in the LSTM.
@@ -36,29 +40,41 @@ class PredNet(Recurrent):
         A_activation: activation function for the target (A) and prediction (A_hat) units.
         LSTM_activation: activation function for the cell and hidden states of the LSTM.
         LSTM_inner_activation: activation function for the gates in the LSTM.
-        output_mode: either 'error', 'prediction', 'all' or layer specification (ex. R2, see below).
+        output_mode: either 'error', 'prediction', 'all' or layer specification (ex. R2,
+        see below).
             Controls what is outputted by the PredNet.
-            If 'error', the mean response of the error (E) units of each layer will be outputted.
+            If 'error', the mean response of the error (E) units of each layer will be
+            outputted.
                 That is, the output shape will be (batch_size, nb_layers).
             If 'prediction', the frame prediction will be outputted.
-            If 'all', the output will be the frame prediction concatenated with the mean layer errors.
+            If 'all', the output will be the frame prediction concatenated with the mean
+            layer errors.
                 The frame prediction is flattened before concatenation.
-                Nomenclature of 'all' is kept for backwards compatibility, but should not be confused with returning all of the layers of the model
-            For returning the features of a particular layer, output_mode should be of the form unit_type + layer_number.
-                For instance, to return the features of the LSTM "representational" units in the lowest layer, output_mode should be specificied as 'R0'.
-                The possible unit types are 'R', 'Ahat', 'A', and 'E' corresponding to the 'representation', 'prediction', 'target', and 'error' units respectively.
+                Nomenclature of 'all' is kept for backwards compatibility, but should not
+                be confused with returning all of the layers of the model
+            For returning the features of a particular layer, output_mode should be of the
+            form unit_type + layer_number.
+                For instance, to return the features of the LSTM "representational" units
+                in the lowest layer, output_mode should be specificied as 'R0'.
+                The possible unit types are 'R', 'Ahat', 'A', and 'E' corresponding to the
+                'representation', 'prediction', 'target', and 'error' units respectively.
         extrap_start_time: time step for which model will start extrapolating.
-            Starting at this time step, the prediction from the previous time step will be treated as the "actual"
+            Starting at this time step, the prediction from the previous time step will be
+            treated as the "actual"
         data_format: 'channels_first' or 'channels_last'.
             It defaults to the `image_data_format` value found in your
             Keras config file at `~/.keras/keras.json`.
 
     # References
-        - [Deep predictive coding networks for video prediction and unsupervised learning](https://arxiv.org/abs/1605.08104)
+        - [Deep predictive coding networks for video prediction and unsupervised learning]
+        (https://arxiv.org/abs/1605.08104)
         - [Long short-term memory](http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf)
-        - [Convolutional LSTM network: a machine learning approach for precipitation nowcasting](http://arxiv.org/abs/1506.04214)
-        - [Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects](http://www.nature.com/neuro/journal/v2/n1/pdf/nn0199_79.pdf)
+        - [Convolutional LSTM network: a machine learning approach for precipitation
+        nowcasting](http://arxiv.org/abs/1506.04214)
+        - [Predictive coding in the visual cortex: a functional interpretation of some
+        extra-classical receptive-field effects](http://www.nature.com/neuro/journal/v2/n1/pdf/nn0199_79.pdf)
     '''
+    
     @legacy_prednet_support
     def __init__(self, stack_sizes, R_stack_sizes,
                  A_filt_sizes, Ahat_filt_sizes, R_filt_sizes,
@@ -84,7 +100,8 @@ class PredNet(Recurrent):
         self.LSTM_inner_activation = activations.get(LSTM_inner_activation)
 
         default_output_modes = ['prediction', 'error', 'all']
-        layer_output_modes = [layer + str(n) for n in range(self.nb_layers) for layer in ['R', 'E', 'A', 'Ahat']]
+        layer_output_modes = [layer + str(n) for n in range(self.nb_layers)
+                                for layer in ['R', 'E', 'A', 'Ahat']]
         assert output_mode in default_output_modes + layer_output_modes, 'Invalid output_mode: ' + str(output_mode)
         self.output_mode = output_mode
         if self.output_mode in layer_output_modes:
@@ -102,6 +119,7 @@ class PredNet(Recurrent):
         self.column_axis = -1 if data_format == 'channels_first' else -2
         super(PredNet, self).__init__(**kwargs)
         self.input_spec = [InputSpec(ndim=5)]
+
 
     def compute_output_shape(self, input_shape):
         if self.output_mode == 'prediction':
@@ -126,6 +144,7 @@ class PredNet(Recurrent):
         else:
             return (input_shape[0],) + out_shape
 
+
     def get_initial_state(self, x):
         input_shape = self.input_spec[0].shape
         init_nb_row = input_shape[self.row_axis]
@@ -141,7 +160,8 @@ class PredNet(Recurrent):
         states_to_pass = ['r', 'c', 'e']
         nlayers_to_pass = {u: self.nb_layers for u in states_to_pass}
         if self.extrap_start_time is not None:
-           states_to_pass.append('ahat')  # pass prediction in states so can use as actual for t+1 when extrapolating
+            # pass prediction in states so can use as actual for t+1 when extrapolating
+           states_to_pass.append('ahat')
            nlayers_to_pass['ahat'] = 1
         for u in states_to_pass:
             for l in range(nlayers_to_pass[u]):
@@ -156,8 +176,10 @@ class PredNet(Recurrent):
                     stack_size = self.stack_sizes[l]
                 output_size = stack_size * nb_row * nb_col  # flattened size
 
-                reducer = K.zeros((input_shape[self.channel_axis], output_size)) # (nb_channels, output_size)
-                initial_state = K.dot(base_initial_state, reducer) # (samples, output_size)
+                # (nb_channels, output_size)
+                reducer = K.zeros((input_shape[self.channel_axis], output_size))
+                # (samples, output_size)
+                initial_state = K.dot(base_initial_state, reducer)
                 if self.data_format == 'channels_first':
                     output_shp = (-1, stack_size, nb_row, nb_col)
                 else:
@@ -167,13 +189,17 @@ class PredNet(Recurrent):
 
         if K._BACKEND == 'theano':
             from theano import tensor as T
-            # There is a known issue in the Theano scan op when dealing with inputs whose shape is 1 along a dimension.
-            # In our case, this is a problem when training on grayscale images, and the below line fixes it.
+            # There is a known issue in the Theano scan op when dealing with inputs
+            # whose shape is 1 along a dimension.
+            # In our case, this is a problem when training on grayscale images, and
+            # the below line fixes it.
             initial_states = [T.unbroadcast(init_state, 0, 1) for init_state in initial_states]
 
         if self.extrap_start_time is not None:
-            initial_states += [K.variable(0, int if K.backend() != 'tensorflow' else 'int32')]  # the last state will correspond to the current timestep
+            # the last state will correspond to the current timestep
+            initial_states += [K.variable(0, int if K.backend() != 'tensorflow' else 'int32')]
         return initial_states
+
 
     def build(self, input_shape):
         self.input_spec = [InputSpec(shape=input_shape)]
@@ -182,13 +208,19 @@ class PredNet(Recurrent):
         for l in range(self.nb_layers):
             for c in ['i', 'f', 'c', 'o']:
                 act = self.LSTM_activation if c == 'c' else self.LSTM_inner_activation
-                self.conv_layers[c].append(Conv2D(self.R_stack_sizes[l], self.R_filt_sizes[l], padding='same', activation=act, data_format=self.data_format))
+                self.conv_layers[c].append(Conv2D(self.R_stack_sizes[l],
+                                self.R_filt_sizes[l], padding='same', activation=act,
+                                data_format=self.data_format))
 
             act = 'relu' if l == 0 else self.A_activation
-            self.conv_layers['ahat'].append(Conv2D(self.stack_sizes[l], self.Ahat_filt_sizes[l], padding='same', activation=act, data_format=self.data_format))
+            self.conv_layers['ahat'].append(Conv2D(self.stack_sizes[l],
+                            self.Ahat_filt_sizes[l], padding='same', activation=act,
+                            data_format=self.data_format))
 
             if l < self.nb_layers - 1:
-                self.conv_layers['a'].append(Conv2D(self.stack_sizes[l+1], self.A_filt_sizes[l], padding='same', activation=self.A_activation, data_format=self.data_format))
+                self.conv_layers['a'].append(Conv2D(self.stack_sizes[l+1],
+                                self.A_filt_sizes[l], padding='same',
+                                activation=self.A_activation, data_format=self.data_format))
 
         self.upsample = UpSampling2D(data_format=self.data_format)
         self.pool = MaxPooling2D(data_format=self.data_format)
@@ -207,7 +239,8 @@ class PredNet(Recurrent):
                     if l < self.nb_layers - 1:
                         nb_channels += self.R_stack_sizes[l+1]
                 in_shape = (input_shape[0], nb_channels, nb_row // ds_factor, nb_col // ds_factor)
-                if self.data_format == 'channels_last': in_shape = (in_shape[0], in_shape[2], in_shape[3], in_shape[1])
+                if self.data_format == 'channels_last': in_shape = (in_shape[0], in_shape[2],
+                                                                    in_shape[3], in_shape[1])
                 with K.name_scope('layer_' + c + '_' + str(l)):
                     self.conv_layers[c][l].build(in_shape)
                 self.trainable_weights += self.conv_layers[c][l].trainable_weights
@@ -218,6 +251,7 @@ class PredNet(Recurrent):
             self.t_extrap = K.variable(self.extrap_start_time, int if K.backend() != 'tensorflow' else 'int32')
             self.states += [None] * 2  # [previous frame prediction, timestep]
 
+
     def step(self, a, states):
         r_tm1 = states[:self.nb_layers]
         c_tm1 = states[self.nb_layers:2*self.nb_layers]
@@ -225,7 +259,9 @@ class PredNet(Recurrent):
 
         if self.extrap_start_time is not None:
             t = states[-1]
-            a = K.switch(t >= self.t_extrap, states[-2], a)  # if past self.extrap_start_time, the previous prediction will be treated as the actual
+            # if past self.extrap_start_time, the previous prediction will
+            # be treated as the actual
+            a = K.switch(t >= self.t_extrap, states[-2], a)
 
         c = []
         r = []
@@ -282,11 +318,13 @@ class PredNet(Recurrent):
             else:
                 for l in range(self.nb_layers):
                     layer_error = K.mean(K.batch_flatten(e[l]), axis=-1, keepdims=True)
-                    all_error = layer_error if l == 0 else K.concatenate((all_error, layer_error), axis=-1)
+                    all_error = layer_error if l == 0 else K.concatenate((all_error, layer_error),
+                                                                         axis=-1)
                 if self.output_mode == 'error':
                     output = all_error
                 else:
-                    output = K.concatenate((K.batch_flatten(frame_prediction), all_error), axis=-1)
+                    output = K.concatenate((K.batch_flatten(frame_prediction), all_error),
+                                           axis=-1)
 
         states = r + c + e
         if self.extrap_start_time is not None:

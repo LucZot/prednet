@@ -15,20 +15,27 @@ from prednet import PredNet
 from data_utils import SequenceGenerator
 from kitti_settings import *
 
+
 # Define loss as MAE of frame predictions after t=0
-# It doesn't make sense to compute loss on error representation, since the error isn't wrt ground truth when extrapolating.
+# It doesn't make sense to compute loss on error representation, since the error
+# isn't wrt ground truth when extrapolating.
 def extrap_loss(y_true, y_hat):
     y_true = y_true[:, 1:]
     y_hat = y_hat[:, 1:]
-    return 0.5 * K.mean(K.abs(y_true - y_hat), axis=-1)  # 0.5 to match scale of loss when trained in error mode (positive and negative errors split)
+    # 0.5 to match scale of loss when trained in error mode (positive and negative errors split)
+    return 0.5 * K.mean(K.abs(y_true - y_hat), axis=-1)
 
 nt = 15
-extrap_start_time = 10  # starting at this time step, the prediction from the previous time step will be treated as the actual input
-orig_weights_file = os.path.join(WEIGHTS_DIR, 'prednet_kitti_weights.hdf5')  # original t+1 weights
+# starting at this time step, the prediction from the previous time step will be
+# treated as the actual input
+extrap_start_time = 10
+# original t+1 weights
+orig_weights_file = os.path.join(WEIGHTS_DIR, 'prednet_kitti_weights.hdf5')
 orig_json_file = os.path.join(WEIGHTS_DIR, 'prednet_kitti_model.json')
 
 save_model = True
-extrap_weights_file = os.path.join(WEIGHTS_DIR, 'prednet_kitti_weights-extrapfinetuned.hdf5')  # where new weights will be saved
+# where new weights will be saved
+extrap_weights_file = os.path.join(WEIGHTS_DIR, 'prednet_kitti_weights-extrapfinetuned.hdf5')
 extrap_json_file = os.path.join(WEIGHTS_DIR, 'prednet_kitti_model-extrapfinetuned.json')
 
 # Data files
@@ -64,10 +71,15 @@ predictions = prednet(inputs)
 model = Model(inputs=inputs, outputs=predictions)
 model.compile(loss=extrap_loss, optimizer='adam')
 
-train_generator = SequenceGenerator(train_file, train_sources, nt, batch_size=batch_size, shuffle=True, output_mode='prediction')
-val_generator = SequenceGenerator(val_file, val_sources, nt, batch_size=batch_size, N_seq=N_seq_val, output_mode='prediction')
+train_generator = SequenceGenerator(train_file, train_sources, nt,
+                                    batch_size=batch_size, shuffle=True,
+                                    output_mode='prediction')
+val_generator = SequenceGenerator(val_file, val_sources, nt,
+                                  batch_size=batch_size, N_seq=N_seq_val,
+                                  output_mode='prediction')
 
-lr_schedule = lambda epoch: 0.001 if epoch < 75 else 0.0001    # start with lr of 0.001 and then drop to 0.0001 after 75 epochs
+# start with lr of 0.001 and then drop to 0.0001 after 75 epochs
+lr_schedule = lambda epoch: 0.001 if epoch < 75 else 0.0001
 callbacks = [LearningRateScheduler(lr_schedule)]
 if save_model:
     if not os.path.exists(WEIGHTS_DIR): os.mkdir(WEIGHTS_DIR)

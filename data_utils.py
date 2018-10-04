@@ -1,7 +1,9 @@
+
 import hickle as hkl
 import numpy as np
 from keras import backend as K
 from keras.preprocessing.image import Iterator
+
 
 # Data generator that creates sequences for input into PredNet.
 class SequenceGenerator(Iterator):
@@ -9,8 +11,11 @@ class SequenceGenerator(Iterator):
                  batch_size=8, shuffle=False, seed=None,
                  output_mode='error', sequence_start_mode='all', N_seq=None,
                  data_format=K.image_data_format()):
-        self.X = hkl.load(data_file)  # X will be like (n_images, nb_cols, nb_rows, nb_channels)
-        self.sources = hkl.load(source_file) # source for each image so when creating sequences can assure that consecutive frames are from same video
+        # X will be like (n_images, nb_cols, nb_rows, nb_channels)
+        self.X = hkl.load(data_file)
+        # source for each image so when creating sequences can assure that
+        # consecutive frames are from same video
+        self.sources = hkl.load(source_file)
         self.nt = nt
         self.batch_size = batch_size
         self.data_format = data_format
@@ -23,9 +28,12 @@ class SequenceGenerator(Iterator):
             self.X = np.transpose(self.X, (0, 3, 1, 2))
         self.im_shape = self.X[0].shape
 
-        if self.sequence_start_mode == 'all':  # allow for any possible sequence, starting from any frame
-            self.possible_starts = np.array([i for i in range(self.X.shape[0] - self.nt) if self.sources[i] == self.sources[i + self.nt - 1]])
-        elif self.sequence_start_mode == 'unique':  #create sequences where each unique frame is in at most one sequence
+        # allow for any possible sequence, starting from any frame
+        if self.sequence_start_mode == 'all':
+            self.possible_starts = np.array([i for i in range(self.X.shape[0] - self.nt)
+                                        if self.sources[i] == self.sources[i + self.nt - 1]])
+        #create sequences where each unique frame is in at most one sequence
+        elif self.sequence_start_mode == 'unique':
             curr_location = 0
             possible_starts = []
             while curr_location < self.X.shape[0] - self.nt + 1:
@@ -38,7 +46,8 @@ class SequenceGenerator(Iterator):
 
         if shuffle:
             self.possible_starts = np.random.permutation(self.possible_starts)
-        if N_seq is not None and len(self.possible_starts) > N_seq:  # select a subset of sequences if want to
+        # select a subset of sequences if want to
+        if N_seq is not None and len(self.possible_starts) > N_seq:
             self.possible_starts = self.possible_starts[:N_seq]
         self.N_sequences = len(self.possible_starts)
         super(SequenceGenerator, self).__init__(len(self.possible_starts), batch_size, shuffle, seed)
@@ -56,8 +65,10 @@ class SequenceGenerator(Iterator):
             batch_y = batch_x
         return batch_x, batch_y
 
+
     def preprocess(self, X):
         return X.astype(np.float32) / 255
+
 
     def create_all(self):
         X_all = np.zeros((self.N_sequences, self.nt) + self.im_shape, np.float32)
